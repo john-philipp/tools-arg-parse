@@ -47,24 +47,32 @@ def convert_to_bool(source_value, log_error=None):
         raise ValueError("Failed conversion to boolean.")
 
 
+class Origin(IEnum):
+    ARGS = "args"
+    FILE = "file"
+    ENV = "env"
+
+
 class Args(ABC):
     def __init__(self, calling_globals):
         self._validate = False
         self._calling_globals = calling_globals
         self._validate = True
+        self._origin = {}
 
     @staticmethod
     def _convert(value, new_value):
         if isinstance(value, bool) and isinstance(new_value, str):
             new_value = convert_to_bool(new_value)
-        elif isinstance(value, (float, int)):
+        elif isinstance(value, (float, int)) and isinstance(new_value, str):
             new_value = type(value)(new_value)
         return new_value
 
+    def _visible_attrs_gen(self):
+        return ((x, y) for x, y in self.__dict__.items() if not x.startswith("_"))
+
     def validate(self):
-        for attr_name in self.__dict__:
-            if attr_name.startswith("_"):
-                continue
+        for attr_name, attr_value in self._visible_attrs_gen():
             enum_cls_name = snake_to_camel(attr_name)
             if enum_cls_name not in self._calling_globals:
                 continue
@@ -72,7 +80,6 @@ class Args(ABC):
             if not isinstance(enum_cls(), IEnum):
                 raise ValueError(
                     f"Attribute {attr_name} has class {enum_cls_name} associated, which isn't an IEnum.")
-            attr_value = getattr(self, attr_name)
             if not enum_cls.valid(attr_value):
                 raise ValueError(
                     f"Unknown {attr_name} = {attr_value}. Valid: {enum_cls.choices()}. Use enum: {enum_cls_name}")
@@ -88,34 +95,30 @@ class Args(ABC):
             if not config_file_path.endswith(".yaml") and not config_file_path.endswith(".yml"):
                 raise ValueError(f"Require a YAML file: {config_file_path}")
             loaded_data = JinjaYamlLoader(config_file_path, dict).load(**bindings)
-            for attr_name, attr_value in self.__dict__.items():
-                if attr_name.startswith("_"):
-                    continue
+            for attr_name, attr_value in self._visible_attrs_gen():
                 if attr_name in loaded_data:
                     new_attr_value = loaded_data[attr_name]
                     if attr_value != new_attr_value:
-                        log.warning(f"From file: {attr_name:30} = {new_attr_value}")
                         self.__dict__[attr_name] = new_attr_value
                         updated_attrs.append(attr_name)
+                        self._origin[attr_name] = Origin.FILE
         self.validate()
         updated_attrs.sort()
         return updated_attrs
 
     def from_env(self, env_var_prefix=None):
         updated_attrs = []
-        for attr_name, attr_value in self.__dict__.items():
+        for attr_name, attr_value in self._visible_attrs_gen():
             try:
-                if attr_name.startswith("_"):
-                    continue
                 env_var = self._as_env_var(attr_name, env_var_prefix)
                 if env_var in os.environ:
                     new_attr_value = os.environ[env_var]
                     if attr_value is not None:
                         new_attr_value = self._convert(attr_value, new_attr_value)
                     if attr_value != new_attr_value:
-                        log.warning(f"From env:  {env_var:30} = {new_attr_value}")
                         self.__dict__[attr_name] = new_attr_value
                         updated_attrs.append(attr_name)
+                        self._origin[attr_name] = Origin.ENV
             except TypeError as ex:
                 log.error(f"Error when handling: key={attr_name} value={attr_value}")
                 raise ex
@@ -126,29 +129,22 @@ class Args(ABC):
     def from_args(self, args):
         updated_attrs = []
         if args:
-            for attr_name, attr_value in self.__dict__.items():
+            if isinstance(args, dict):
+                # Shorthand to turn into object.
+                args = type("_T", (), args)()
+            for attr_name, attr_value in self._visible_attrs_gen():
                 try:
-                    if attr_name.startswith("_"):
-                        continue
                     if hasattr(args, attr_name):
                         new_attr_value = getattr(args, attr_name)
-                        if attr_value is not None and new_attr_value is not None:
-
-                            try:
-                                new_attr_value = self._convert(attr_value, new_attr_value)
-                            except ValueError as ex:
-                                log.error(
-                                    f"Error when mapping: key={attr_name} value={attr_value} new_value={new_attr_value}")
-                                raise ex
-
-                            log.warning(f"From args: {attr_name:30} = {new_attr_value}")
+                        if attr_value is not None:
+                            new_attr_value = self._convert(attr_value, new_attr_value)
+                        if attr_value != new_attr_value:
                             setattr(self, attr_name, new_attr_value)
                             updated_attrs.append(attr_name)
-
+                        self._origin[attr_name] = Origin.ARGS
                 except TypeError as ex:
                     log.error(f"Error when handling: key={attr_name} value={attr_value}")
                     raise ex
-
         self.validate()
         updated_attrs.sort()
         return updated_attrs
@@ -161,7 +157,5 @@ class Args(ABC):
         return f"{env_var_prefix}_{env_var}"
 
     def log(self):
-        for attr_name, attr_value in self.__dict__.items():
-            if attr_name.startswith("_"):
-                continue
-            log.warning(f"args.{attr_name:20} = {attr_value}")
+        for attr_name, attr_value in self._visible_attrs_gen():
+            log.warning(f"args.{attr_name:20} = {attr_value.__str__():20} (from {self._origin[attr_name]:4})")

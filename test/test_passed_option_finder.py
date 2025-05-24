@@ -54,13 +54,13 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_many_intermixed_options(self):
         self._base_template_test(
             ['build', 'docker', '--tag', 'latest', '-n', '--tag2=123'],
-            {'--tag': 'latest', '--no-cache': True, '--tag2': '123'},
+            {'tag': 'latest', 'no_cache': True, 'tag2': '123'},
             ["build", "docker"])
 
     def test_single_long_option(self):
         self._base_template_test(
             ["build", "--tag", "some_tag"],
-            {"--tag": "some_tag"},
+            {"tag": "some_tag"},
             ["build"],
             args_definitions=[
                 ("mode", "build", [_OptDef("-t", "--tag")])
@@ -69,7 +69,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_single_short_option(self):
         self._base_template_test(
             ["build", "-t", "some_tag"],
-            {"--tag": "some_tag"},
+            {"tag": "some_tag"},
             ["build"],
             args_definitions=[
                 ("mode", "build", [_OptDef("-t", "--tag")])
@@ -78,7 +78,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_standalone_boolean_1(self):
         self._base_template_test(
             ["build", "-n"],
-            {"--no-cache": True},
+            {"no_cache": True},
             ["build"],
             args_definitions=[
                 ("mode", "build", [_OptDef("-n", "--no-cache", action="store_true")])
@@ -87,7 +87,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_standalone_boolean_2(self):
         self._base_template_test(
             ["build", "-n", "-t", "some_tag"],
-            {"--no-cache": True, "--tag": "some_tag"},
+            {"no_cache": True, "tag": "some_tag"},
             ["build"],
             args_definitions=[
                 ("mode", "build", [
@@ -99,7 +99,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_skip_next(self):
         self._base_template_test(
             ["build", "-t=some_tag", "-n"],
-            {"--no-cache": True, "--tag": "some_tag"},
+            {"no_cache": True, "tag": "some_tag"},
             ["build"],
             args_definitions=[
                 ("mode", "build", [
@@ -111,7 +111,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_multiple_long_options_and_boolean(self):
         self._base_template_test(
             ["deploy", "--region=us-west-1", "--force"],
-            {"--region": "us-west-1", "--force": True},
+            {"region": "us-west-1", "force": True},
             ["deploy"],
             args_definitions=[
                 ("mode", "deploy", [
@@ -134,7 +134,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_unknown_option_is_skipped(self):
         self._base_template_test(
             ["build", "--unknown", "value", "--tag", "v1.0"],
-            {"--tag": "v1.0"},  # --unknown is ignored
+            {"tag": "v1.0"},  # --unknown is ignored
             ["build"],
             args_definitions=[
                 ("mode", "build", [_OptDef("--tag")])
@@ -150,7 +150,7 @@ class TestPassedOptionFinder(unittest.TestCase):
     def test_short_option_only_does_not_map_long(self):
         self._base_template_test(
             ["build", "-x", "value"],
-            {"-x": "value"},
+            {"x": "value"},
             ["build"],
             args_definitions=[
                 ("mode", "build", [_OptDef("-x")])  # No --long form

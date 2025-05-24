@@ -54,7 +54,8 @@ class PassedOptionFinder:
                     continue
 
                 long_option_string = next(self._option_string_gen(action), option_string)
-                long_options_passed[long_option_string] = option_value
+                long_option_name = long_option_string.lstrip("-").replace("-", "_")
+                long_options_passed[long_option_name] = option_value
 
         return long_options_passed
 
