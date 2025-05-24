@@ -17,6 +17,7 @@ class ParserDefMode2Action1(IParserDef):
 
         parser.add_argument(
             "--optional-int-arg", "-o",
-            help="Optional int arg for mode 2 action 1.")
+            help="Optional int arg for mode 2 action 1.",
+            default=0)
 
         return parser

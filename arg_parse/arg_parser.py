@@ -39,8 +39,6 @@ class ArgParser:
         if updated:
             # We override from actually passed args, if we read from file and/or env.
             passed_option_finder = PassedOptionFinder(parser)
-
-            # TODO: get rid of assumption mode/action? Or define it.
             passed_option_finder.nest_into_parser(parsed_args.mode, parsed_args.action)
             passed_args = passed_option_finder.find_long_options_passed(args)
             args_.from_args(passed_args)
