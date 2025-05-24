@@ -1,7 +1,8 @@
+import argparse
 from argparse import _StoreTrueAction
 
 
-def make_docs(arg_parser):
+def make_docs(arg_parser: argparse.ArgumentParser):
     print(arg_parser.description)
 
     # To avoid duplicates on screen.
