@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="arg_parse",
-    version="0.0.3",
+    version="0.0.4",
     packages=find_packages(),
     install_requires=[],
     author="john-philipp",

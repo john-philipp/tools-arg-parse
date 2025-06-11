@@ -48,6 +48,7 @@ def convert_to_bool(source_value, log_error=None):
 
 
 class Origin(IEnum):
+    DEFAULT = "default"
     ARGS = "args"
     FILE = "file"
     ENV = "env"
@@ -67,6 +68,9 @@ class Args(ABC):
         elif isinstance(value, (float, int)) and isinstance(new_value, str):
             new_value = type(value)(new_value)
         return new_value
+
+    def map_origin(self, from_value: Origin, to_value: Origin):
+        self._origin = {x: to_value if y == from_value else y for x, y in self._origin.items()}
 
     def _visible_attrs_gen(self):
         return ((x, y) for x, y in self.__dict__.items() if not x.startswith("_"))
@@ -158,4 +162,5 @@ class Args(ABC):
 
     def log(self):
         for attr_name, attr_value in self._visible_attrs_gen():
-            log.warning(f"args.{attr_name:20} = {attr_value.__str__():20} (from {self._origin[attr_name]:4})")
+            log.warning(f"args.{attr_name:20} = {attr_value.__str__():20} "
+                        f"(from {self._origin.get(attr_name, Origin.DEFAULT):4})")

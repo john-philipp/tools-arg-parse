@@ -1,6 +1,6 @@
 import argparse
 
-from arg_parse.ifaces import Args
+from arg_parse.ifaces import Args, Origin
 from arg_parse.passed_option_finder import PassedOptionFinder
 
 
@@ -41,6 +41,7 @@ class ArgParser:
             passed_option_finder = PassedOptionFinder(parser)
             passed_option_finder.nest_into_parser(parsed_args.mode, parsed_args.action)
             passed_args = passed_option_finder.find_long_options_passed(args)
+            args_.map_origin(Origin.ARGS, Origin.DEFAULT)
             args_.from_args(passed_args)
 
         return args_
