@@ -77,6 +77,9 @@ class Args(ABC):
 
     def validate(self):
         for attr_name, attr_value in self._visible_attrs_gen():
+            if attr_value is None:
+                # Allow for default None.
+                continue
             enum_cls_name = snake_to_camel(attr_name)
             if enum_cls_name not in self._calling_globals:
                 continue
@@ -88,12 +91,8 @@ class Args(ABC):
                 raise ValueError(
                     f"Unknown {attr_name} = {attr_value}. Valid: {enum_cls.choices()}. Use enum: {enum_cls_name}")
 
-    def __setattr__(self, attr_name, attr_value):
-        super().__setattr__(attr_name, attr_value)
-        if self._validate:
-            self.validate()
-
     def from_file(self, config_file_path, **bindings):
+        changed = False
         updated_attrs = []
         if config_file_path:
             if not config_file_path.endswith(".yaml") and not config_file_path.endswith(".yml"):
@@ -106,11 +105,14 @@ class Args(ABC):
                         self.__dict__[attr_name] = new_attr_value
                         updated_attrs.append(attr_name)
                         self._origin[attr_name] = Origin.FILE
-        self.validate()
+                        changed = True
+        if changed:
+            self.validate()
         updated_attrs.sort()
         return updated_attrs
 
     def from_env(self, env_var_prefix=None):
+        changed = False
         updated_attrs = []
         for attr_name, attr_value in self._visible_attrs_gen():
             try:
@@ -123,14 +125,17 @@ class Args(ABC):
                         self.__dict__[attr_name] = new_attr_value
                         updated_attrs.append(attr_name)
                         self._origin[attr_name] = Origin.ENV
+                        changed = True
             except TypeError as ex:
                 log.error(f"Error when handling: key={attr_name} value={attr_value}")
                 raise ex
-        self.validate()
+        if changed:
+            self.validate()
         updated_attrs.sort()
         return updated_attrs
 
     def from_args(self, args):
+        changed = False
         updated_attrs = []
         if args:
             if isinstance(args, dict):
@@ -145,11 +150,13 @@ class Args(ABC):
                         if attr_value != new_attr_value:
                             setattr(self, attr_name, new_attr_value)
                             updated_attrs.append(attr_name)
+                            changed = True
                         self._origin[attr_name] = Origin.ARGS
                 except TypeError as ex:
                     log.error(f"Error when handling: key={attr_name} value={attr_value}")
                     raise ex
-        self.validate()
+        if changed:
+            self.validate()
         updated_attrs.sort()
         return updated_attrs
 
